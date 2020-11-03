@@ -10,7 +10,7 @@
 #
 # @note
 #   Currently requires the puppetlabs/concat module on the Puppet Forge and
-#   uses storeconfigs on the Puppet Master to export/collect resources
+#   uses storeconfigs on the Puppet Server to export/collect resources
 #   from all backend members.
 #
 # @param section_name
@@ -92,7 +92,17 @@ define haproxy::backend (
   }
 
   include haproxy::globals
-  $_sort_options_alphabetic = pick($sort_options_alphabetic, $haproxy::globals::sort_options_alphabetic)
+
+  # See https://github.com/puppetlabs/puppetlabs-haproxy/pull/442 - when using the option 'httpchk', it must be positioned
+  # before the 'http-check' directive in haproxy.cfg otherwise it will be ignored
+  if $options.is_hash and has_key($options, 'option') {
+    if ('httpchk' in $options['option']) {
+      warning('Overriding the value of $sort_options_alphabetic to "false" due to "httpchk" option defined')
+      $_sort_options_alphabetic = false
+    }
+  } else {
+    $_sort_options_alphabetic = pick($sort_options_alphabetic, $haproxy::globals::sort_options_alphabetic)
+  }
 
   if $defaults == undef {
     $order = "20-${section_name}-00"
